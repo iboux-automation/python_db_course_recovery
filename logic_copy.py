@@ -44,13 +44,13 @@ def _prune_new_course_duplicates(conn, rows, dry_run: bool = False):
     if len(sids) != 1:
         return rows, messages, dup_count
     dup_count = len(rows) - 1
-    has_new_class = _table_exists(conn, 'new_class')
+    has_new_class = _table_exists(conn, 'backup_new_class')
     counts = {}
     if has_new_class:
         with conn.cursor() as cur:
             for r in rows:
                 cid = r.get('id')
-                cur.execute("SELECT COUNT(*) FROM public.new_class WHERE course_id = %s", (cid,))
+                cur.execute("SELECT COUNT(*) FROM public.backup_new_class WHERE course_id = %s", (cid,))
                 counts[cid] = cur.fetchone()[0]
     else:
         for r in rows:
@@ -71,7 +71,7 @@ def _prune_new_course_duplicates(conn, rows, dry_run: bool = False):
         if dry_run:
             continue
         with conn.cursor() as cur:
-            cur.execute("DELETE FROM public.new_course WHERE id = %s", (cid,))
+            cur.execute("DELETE FROM public.backup_new_course WHERE id = %s", (cid,))
         conn.commit()
     return kept_rows, messages, dup_count
 
@@ -89,10 +89,10 @@ def find_courses_by_spreadsheet_name(conn, spreadsheet_name: str) -> List[dict]:
 
 
 def find_new_course_by_spreadsheet_name(conn, spreadsheet_name: str) -> List[dict]:
-    """Find rows in new_course by exact spreadsheet_name."""
+    """Find rows in backup_new_course by exact spreadsheet_name."""
     with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
         cur.execute(
-            "SELECT * FROM public.new_course WHERE spreadsheet_name = %s",
+            "SELECT * FROM public.backup_new_course WHERE spreadsheet_name = %s",
             (spreadsheet_name,),
         )
         return list(cur.fetchall())
@@ -105,19 +105,19 @@ def update_student_is_2on1(conn, student_id: Optional[int], is_2on1: bool, dry_r
         return
     with conn.cursor() as cur:
         cur.execute(
-            "UPDATE public.new_student_data SET is_2on1 = %s WHERE id = %s",
+            "UPDATE public.backup_new_student_data SET is_2on1 = %s WHERE id = %s",
             (is_2on1, student_id),
         )
-    logging.info(f"Updated new_student_data id={student_id} is_2on1={is_2on1}")
+    logging.info(f"Updated backup_new_student_data id={student_id} is_2on1={is_2on1}")
 
 
 def update_new_course(conn, row_id: int, type_value: str, company_name: str, course_language: str, taas_school: str, dry_run: bool = False) -> None:
-    """Update a new_course row with inferred fields.
+    """Update a backup_new_course row with inferred fields.
 
     Only sets optional fields (course_language, taas_school) if columns exist.
     """
     # Build dynamic SET list based on existing columns to avoid errors if columns are missing
-    cols = fetch_table_columns(conn, 'new_course')
+    cols = fetch_table_columns(conn, 'backup_new_course')
     # Normalize to uppercase for DB storage; use None for empty strings
     type_db = (type_value or '').upper() or None
     company_db = (company_name or '').upper() or None
@@ -139,11 +139,11 @@ def update_new_course(conn, row_id: int, type_value: str, company_name: str, cou
         return
     with conn.cursor() as cur:
         cur.execute(
-            f"UPDATE public.new_course SET {set_sql} WHERE id = %s",
+            f"UPDATE public.backup_new_course SET {set_sql} WHERE id = %s",
             (*params, row_id),
         )
     logging.info(
-        f"Updated new_course id={row_id} customer_type={type_db} company_name={company_db!r} course_language={lang_db!r} taas_school={taas_school_db!r}"
+        f"Updated backup_new_course id={row_id} customer_type={type_db} company_name={company_db!r} course_language={lang_db!r} taas_school={taas_school_db!r}"
     )
 
 
@@ -310,10 +310,10 @@ def orchestrate(conn, input_path: str, dry_run: bool = False):
                 new_taas_school = (taas_school or '').upper() if new_type == 'TAAS' else ''
 
                 logging.info(
-                    "new_course: [customer_type:%s, company_name:%s, course_language:%s, taas_school:%s]",
+                    "backup_new_course: [customer_type:%s, company_name:%s, course_language:%s, taas_school:%s]",
                     new_type, new_company or '', new_lang or '', new_taas_school or ''
                 )
-                logging.info("new_student_data: [is_2on1:%s]", is_2on1)
+                logging.info("backup_new_student_data: [is_2on1:%s]", is_2on1)
 
                 update_new_course(conn, row['id'], type_value, company_name, course_language, taas_school, dry_run=dry_run)
                 update_student_is_2on1(conn, row.get('student_id'), is_2on1, dry_run=dry_run)

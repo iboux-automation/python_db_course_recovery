@@ -18,7 +18,7 @@ def main():
     """Entry point for command-line execution."""
     # Load environment variables from .env if present (local dev)
     load_dotenv()
-    parser = argparse.ArgumentParser(description='Update public.new_course from input paths (customer_type, company, language, 2-1, taas school)')
+    parser = argparse.ArgumentParser(description='Update public.backup_new_course from input paths (customer_type, company, language, 2-1, taas school)')
     parser.add_argument('--input', default='b2b_paths/b2b_paths.cleaned.csv', help='Input file with one path per line')
     parser.add_argument('--dry-run', action='store_true', help='Do not write to DB, only log actions')
     parser.add_argument('--verbose', action='store_true', help='Verbose logging')
