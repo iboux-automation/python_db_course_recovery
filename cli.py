@@ -5,6 +5,7 @@ from difflib import SequenceMatcher
 from typing import Optional, Sequence, Tuple
 
 from dotenv import load_dotenv
+from psycopg2.extras import execute_batch
 
 from db_conn import get_conn
 
@@ -12,6 +13,8 @@ CANONICAL_NO_SHOW = "No show"
 CANONICAL_LATE_CANCEL = "Less than 24 hours cancellation"
 NO_SHOW_COMPACT = "noshow"
 PROGRESS_LOG_EVERY = 500
+UPDATE_BATCH_SIZE = 1000
+UPDATE_LOG_EVERY = 5000
 
 
 def setup_logging(verbose: bool) -> None:
@@ -66,14 +69,27 @@ def apply_updates(conn, updates, dry_run: bool) -> None:
         logging.info("DRY RUN: skipping %s update statements (no DB writes)", len(updates))
         return
 
+    total = len(updates)
+    if total == 0:
+        logging.info("No DB updates to apply.")
+        return
+
+    logging.info("Applying %s updates in batches of %s", total, UPDATE_BATCH_SIZE)
     with conn.cursor() as cur:
-        for new_value, class_id in updates:
-            cur.execute(
+        for start in range(0, total, UPDATE_BATCH_SIZE):
+            batch = updates[start : start + UPDATE_BATCH_SIZE]
+            execute_batch(
+                cur,
                 "UPDATE class SET cancellation = %s WHERE id = %s",
-                (new_value, class_id),
+                batch,
+                page_size=UPDATE_BATCH_SIZE,
             )
+            applied = start + len(batch)
+            if applied % UPDATE_LOG_EVERY == 0 or applied == total:
+                pct = (applied / total) * 100
+                logging.info("update progress: applied=%s/%s (%.1f%%)", applied, total, pct)
     conn.commit()
-    logging.info("Committed %s updates", len(updates))
+    logging.info("Committed %s updates", total)
 
 
 def normalize_all(conn, dry_run: bool) -> dict:

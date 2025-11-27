@@ -1,1 +1,1 @@
-worker: python -u cli.py --dry-run
+worker: python -u cli.py
