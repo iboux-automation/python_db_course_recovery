@@ -11,6 +11,7 @@ from db_conn import get_conn
 CANONICAL_NO_SHOW = "No show"
 CANONICAL_LATE_CANCEL = "Less than 24 hours cancellation"
 NO_SHOW_COMPACT = "noshow"
+PROGRESS_LOG_EVERY = 500
 
 
 def setup_logging(verbose: bool) -> None:
@@ -86,10 +87,13 @@ def normalize_all(conn, dry_run: bool) -> dict:
     }
     updates = []
 
-    for class_id, raw_value, comments in rows:
+    for idx, (class_id, raw_value, comments) in enumerate(rows, start=1):
         new_value = normalize_cancellation(raw_value)
+        source = "cancellation"
         if new_value is None:
             new_value = derive_from_comments(comments)
+            if new_value is not None:
+                source = "class_comments"
 
         if new_value == raw_value:
             continue
@@ -100,7 +104,23 @@ def normalize_all(conn, dry_run: bool) -> dict:
             stats["to_late_cancel"] += 1
         else:
             stats["to_null"] += 1
+        logging.debug(
+            "update class id=%s: cancellation %r -> %r (source=%s)",
+            class_id,
+            raw_value,
+            new_value,
+            source,
+        )
         updates.append((new_value, class_id))
+        if idx % PROGRESS_LOG_EVERY == 0:
+            logging.info(
+                "progress: scanned=%s updated=%s [no_show=%s <24h=%s null=%s]",
+                idx,
+                stats["updated"],
+                stats["to_no_show"],
+                stats["to_late_cancel"],
+                stats["to_null"],
+            )
 
     if updates:
         apply_updates(conn, updates, dry_run=dry_run)

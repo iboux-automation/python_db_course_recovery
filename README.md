@@ -12,10 +12,10 @@ Setup
 - Install deps: `pip install -r requirements.txt`.
 
 Usage
-- Dry run (no writes): `python cli.py --dry-run --verbose`
+- Dry run (no writes): `python cli.py --dry-run`
 - Apply changes: `python cli.py`
-- Optional `--verbose` for debug-level logging.
-- Procfile runs the same script by default: `worker: python -u cli.py --verbose`.
+- Optional `--verbose` for debug-level logging (includes per-row update logs; can be very chatty).
+- Procfile runs the same script by default: `worker: python -u cli.py`.
 
 Normalization rules
 - Keep as-is when already exactly `No show` or `Less than 24 hours cancellation`.
