@@ -43,9 +43,20 @@ def normalize_cancellation(raw_value: Optional[str]) -> Optional[str]:
     return None
 
 
-def fetch_class_rows(conn) -> Sequence[Tuple[int, Optional[str]]]:
+def derive_from_comments(comments: Optional[str]) -> Optional[str]:
+    if not comments:
+        return None
+    lowered = comments.lower()
+    if "no show" in lowered:
+        return CANONICAL_NO_SHOW
+    if "24 hours" in lowered:
+        return CANONICAL_LATE_CANCEL
+    return None
+
+
+def fetch_class_rows(conn) -> Sequence[Tuple[int, Optional[str], Optional[str]]]:
     with conn.cursor() as cur:
-        cur.execute("SELECT id, cancellation FROM class")
+        cur.execute("SELECT id, cancellation, class_comments FROM class")
         return cur.fetchall()
 
 
@@ -75,8 +86,11 @@ def normalize_all(conn, dry_run: bool) -> dict:
     }
     updates = []
 
-    for class_id, raw_value in rows:
+    for class_id, raw_value, comments in rows:
         new_value = normalize_cancellation(raw_value)
+        if new_value is None:
+            new_value = derive_from_comments(comments)
+
         if new_value == raw_value:
             continue
         stats["updated"] += 1
