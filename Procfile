@@ -1,1 +1,1 @@
-worker: python -u cli.py --verbose
+python cli.py --dry-run --verbose
