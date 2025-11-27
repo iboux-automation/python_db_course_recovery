@@ -62,18 +62,18 @@ def fetch_class_rows(conn) -> Sequence[Tuple[int, Optional[str], Optional[str]]]
 
 
 def apply_updates(conn, updates, dry_run: bool) -> None:
+    if dry_run:
+        logging.info("DRY RUN: skipping %s update statements (no DB writes)", len(updates))
+        return
+
     with conn.cursor() as cur:
         for new_value, class_id in updates:
             cur.execute(
                 "UPDATE class SET cancellation = %s WHERE id = %s",
                 (new_value, class_id),
             )
-    if dry_run:
-        conn.rollback()
-        logging.info("DRY RUN: rolled back %s updates", len(updates))
-    else:
-        conn.commit()
-        logging.info("Committed %s updates", len(updates))
+    conn.commit()
+    logging.info("Committed %s updates", len(updates))
 
 
 def normalize_all(conn, dry_run: bool) -> dict:
