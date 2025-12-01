@@ -21,5 +21,5 @@ Normalization rules
 - Keep as-is when already exactly `No show` or `Less than 24 hours cancellation`.
 - Otherwise, if the text clearly looks like “no show” (case-insensitive, allows hyphens/extra words, or small typos detected via similarity), set to `No show`.
 - Otherwise, if the text contains `24` anywhere, set to `Less than 24 hours cancellation`.
-- Otherwise, if `cancellation` would be `NULL`, look at `class_comments` (lowercased): if it contains “no show” → `No show`; else if it contains “24 hours” → `Less than 24 hours cancellation`.
+- Otherwise, if `cancellation` would be `NULL`, look at `class_comments` (lowercased): if it contains “no show” → `No show`; else if it contains “24 hours”, “24 hour”, “-24”, or “- 24” → `Less than 24 hours cancellation`.
 - All other content (including `-`, empty strings, or unrelated text) becomes `NULL`.

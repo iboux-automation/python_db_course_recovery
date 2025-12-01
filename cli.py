@@ -12,6 +12,7 @@ from db_conn import get_conn
 CANONICAL_NO_SHOW = "No show"
 CANONICAL_LATE_CANCEL = "Less than 24 hours cancellation"
 NO_SHOW_COMPACT = "noshow"
+LATE_CANCEL_COMMENT_MARKERS = ("24 hours", "24 hour", "-24", "- 24")
 PROGRESS_LOG_EVERY = 500
 UPDATE_BATCH_SIZE = 1000
 UPDATE_LOG_EVERY = 5000
@@ -53,7 +54,7 @@ def derive_from_comments(comments: Optional[str]) -> Optional[str]:
     lowered = comments.lower()
     if "no show" in lowered:
         return CANONICAL_NO_SHOW
-    if "24 hours" in lowered:
+    if any(marker in lowered for marker in LATE_CANCEL_COMMENT_MARKERS):
         return CANONICAL_LATE_CANCEL
     return None
 
